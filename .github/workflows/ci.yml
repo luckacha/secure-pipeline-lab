@@ -1,0 +1,19 @@
+name: security-pipeline
+permissions:
+  contents: read
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  gitleaks:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: gitleaks-docker
+        run: docker run --rm -v "$PWD:/path:ro" zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git /path -v --redact
