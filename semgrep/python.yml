@@ -1,0 +1,6 @@
+rules:
+  - id: python-no-eval
+    languages: [python]
+    severity: ERROR
+    message: Не использовать eval для выполнения строк как Python кода
+    pattern: eval(...)
