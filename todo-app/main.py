@@ -50,3 +50,6 @@ def complete_task(task_id: int) -> Task:
 def delete_task(task_id: int) -> None:
     get_task(task_id)
     del tasks[task_id]
+
+def bandit_demo(expression: str):
+    return eval(expression)
