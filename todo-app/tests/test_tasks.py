@@ -15,7 +15,7 @@ def reset_tasks():
 
 def test_list_tasks_empty():
     response = client.get("/tasks")
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json() == []
 
 
