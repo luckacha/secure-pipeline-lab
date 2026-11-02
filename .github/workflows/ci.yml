@@ -40,3 +40,5 @@ jobs:
         run: python -m ruff format --check .
       - name: pytest
         run: python -m pytest -v
+      - name: bandit
+        run: python -m bandit main.py
