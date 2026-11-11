@@ -121,8 +121,13 @@ jobs:
             --security-opt=no-new-privileges:true \
             --memory=256m --cpus=0.5 --pids-limit=64 \
             todo-app:dast
-          curl --fail --retry 15 --retry-connrefused \
-            --retry-delay 2 http://127.0.0.1:8001/tasks
+          if ! curl --fail --silent --show-error \
+            --retry 15 --retry-all-errors \
+            --retry-delay 2 --connect-timeout 2 --max-time 5 \
+            http://127.0.0.1:8001/tasks; then
+            docker logs todo-dast
+            exit 1
+          fi
 
       - name: prepare-reports
         run: |
