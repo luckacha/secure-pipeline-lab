@@ -51,3 +51,54 @@ jobs:
             --metrics=off --disable-version-check --error /src/todo-app/main.py
       - name: pip-audit
         run: python -m pip_audit --require-hashes -r requirements.txt
+  container:
+    runs-on: ubuntu-24.04
+    env:
+      TRIVY_IMAGE: aquasec/trivy@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: hadolint
+        run: |
+          docker run --rm -i \
+            hadolint/hadolint@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d \
+            < todo-app/Dockerfile
+
+      - name: build
+        run: |
+          docker build -t todo-app:ci ./todo-app
+          docker save -o /tmp/todo-app.tar todo-app:ci
+
+      - name: reports
+        run: |
+          mkdir -p reports
+          docker run --rm \
+            -v /tmp/todo-app.tar:/scan/image.tar:ro \
+            -v trivy-cache:/root/.cache/trivy \
+            "$TRIVY_IMAGE" image --input /scan/image.tar \
+            --scanners vuln --format json > reports/trivy.json
+          docker run --rm \
+            -v /tmp/todo-app.tar:/scan/image.tar:ro \
+            "$TRIVY_IMAGE" image --input /scan/image.tar \
+            --format cyclonedx > reports/sbom.cdx.json
+
+      - name: trivy-gate
+        run: |
+          docker run --rm \
+            -v /tmp/todo-app.tar:/scan/image.tar:ro \
+            -v trivy-cache:/root/.cache/trivy \
+            "$TRIVY_IMAGE" image --input /scan/image.tar \
+            --scanners vuln --severity HIGH,CRITICAL \
+            --ignore-unfixed --exit-code 1
+
+      - name: upload-reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: container-reports
+          path: reports/
+          retention-days: 14
+          if-no-files-found: error
