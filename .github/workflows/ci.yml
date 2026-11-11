@@ -102,3 +102,55 @@ jobs:
           path: reports/
           retention-days: 14
           if-no-files-found: error
+  dast:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: build
+        run: docker build -t todo-app:dast ./todo-app
+
+      - name: start-app
+        run: |
+          docker run -d --name todo-dast \
+            -p 127.0.0.1:8001:8000 \
+            --read-only --cap-drop=ALL \
+            --security-opt=no-new-privileges:true \
+            --memory=256m --cpus=0.5 --pids-limit=64 \
+            todo-app:dast
+          curl --fail --retry 15 --retry-connrefused \
+            --retry-delay 2 http://127.0.0.1:8001/tasks
+
+      - name: prepare-reports
+        run: |
+          mkdir -p reports/zap
+          chmod 0777 reports/zap
+
+      - name: zap-baseline
+        run: |
+          docker run --rm --network host \
+            --mount "type=bind,src=$PWD/reports/zap,dst=/zap/wrk" \
+            --mount "type=bind,src=$PWD/zap/baseline.conf,dst=/zap/baseline.conf,readonly" \
+            ghcr.io/zaproxy/zaproxy@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af \
+            zap-baseline.py \
+            -t http://127.0.0.1:8001/tasks \
+            -m 1 -c /zap/baseline.conf \
+            -r baseline.html -J baseline.json
+
+      - name: upload-reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: dast-reports
+          path: |
+            reports/zap/baseline.html
+            reports/zap/baseline.json
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: cleanup
+        if: ${{ always() }}
+        run: docker rm -f todo-dast

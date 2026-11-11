@@ -4,6 +4,15 @@ from pydantic import BaseModel
 app = FastAPI(title="Todo App")
 
 
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    return response
+
+
 class TaskCreate(BaseModel):
     title: str
 
