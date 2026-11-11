@@ -6,10 +6,7 @@ RUN python -m venv /opt/venv
 
 COPY requirements.txt .
 
-RUN /opt/venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements.txt
-
-RUN /opt/venv/bin/python -m pip uninstall --yes pip
-
+RUN /opt/venv/bin/python -m pip install --no-cache-dir --require-hashes -r requirements.txt && /opt/venv/bin/python -m pip uninstall --yes pip
 
 
 FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 AS runtime
